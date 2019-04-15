@@ -52,19 +52,57 @@ trait TSingleton
 }
 //Решение: свести к крайне необходимому минимуму использование классов-одиночек. В идеальной ситуации — избавиться от них вовсе.
 
-//Приватизация (Privatization) или Инверсия абстракции (Abstract Inversion)
+//Приватизация (Privatization)
 class Request
 {
+    private $requestString;
+    private $controllerName;
+    private $actionName;
+    private $params;
+    private $requestMethod;
+    private $isAjax = false;
+
     ...
-    private function parseRequest() {
+
+    private function parseRequest()
+    {
         $pattern = '#(?P<controller>\w+)[/]?(?P<action>\w+)?[/]?[?]?(?P<params>.*)?#ui';
-        if (preg_match_all($pattern, $this->requestString, $matches)) {
+        if(preg_match_all($pattern, $this->requestString, $matches)) {
             $this->controllerName = $matches['controller'][0];
             $this->actionName = $matches['action'][0];
             $this->params = $_REQUEST;
         }
     }
-    ...
+
+    public function getControllerName()
+    {
+        return $this->controllerName;
+    }
+
+    public function getActionName()
+    {
+        return $this->actionName;
+    }
+
+    public function getParam($key)
+    {
+        return $this->params[$key];
+    }
+
+    public function getParams()
+    {
+        return $this->params;
+    }
+
+    public function getRequestMethod()
+    {
+        return $this->requestMethod;
+    }
+
+    public function isAjax()
+    {
+        return $this->isAjax;
+    }
 }
 
 //Решение: функционально важные методы в классе лучше объявлять как защищённые (protected), чтобы иметь возможность их переопределения в потомках.
