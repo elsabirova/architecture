@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Service\Discount;
+namespace Service\Discount\DiscountTypes;
 
 class NullObject implements IDiscount
 {

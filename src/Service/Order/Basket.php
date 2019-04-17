@@ -9,8 +9,10 @@ use Service\Billing\Card;
 use Service\Billing\IBilling;
 use Service\Communication\Email;
 use Service\Communication\ICommunication;
-use Service\Discount\IDiscount;
-use Service\Discount\NullObject;
+use Service\Discount\DiscountIdentifier;
+use Service\Discount\DiscountTypes\NullObject;
+use Service\Discount\DiscountTypes\PromoCode;
+use Service\Discount\DiscountTypes\VipDiscount;
 use Service\User\ISecurity;
 use Service\User\Security;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
@@ -84,13 +86,18 @@ class Basket
         // Здесь должна быть некоторая логика выбора способа платежа
         $billing = new Card();
 
-        // Здесь должна быть некоторая логика получения информации о скидки пользователя
-        $discount = new NullObject();
-
         // Здесь должна быть некоторая логика получения способа уведомления пользователя о покупке
         $communication = new Email();
 
         $security = new Security($this->session);
+
+        // Здесь должна быть некоторая логика получения информации о скидки пользователя
+        $discount = new DiscountIdentifier();
+        //Выбираем тип скидки
+        $user = $security->getUser();
+        $discount->setDiscount(new VipDiscount($user));
+        //$discount->setDiscount(new NullObject());
+        //$discount->setDiscount(new PromoCode('month_discount'));
 
         $this->checkoutProcess($discount, $billing, $security, $communication);
     }
@@ -98,14 +105,14 @@ class Basket
     /**
      * Проведение всех этапов заказа
      *
-     * @param IDiscount $discount,
+     * @param DiscountIdentifier $discount,
      * @param IBilling $billing,
      * @param ISecurity $security,
      * @param ICommunication $communication
      * @return void
      */
     public function checkoutProcess(
-        IDiscount $discount,
+        DiscountIdentifier $discount,
         IBilling $billing,
         ISecurity $security,
         ICommunication $communication
@@ -115,7 +122,13 @@ class Basket
             $totalPrice += $product->getPrice();
         }
 
-        $discount = $discount->getDiscount();
+        //Получаем скидку
+        try {
+            $discount = $discount->getDiscount();
+        }
+        catch (\Exception $e) {
+            // discount not defined
+        }
         $totalPrice = $totalPrice - $totalPrice / 100 * $discount;
 
         $billing->pay($totalPrice);
