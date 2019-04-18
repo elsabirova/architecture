@@ -5,6 +5,7 @@ namespace Service\Order\Observer;
 use Service\Notification\NotificationTypes\Sms;
 use Service\Notification\NotificationTypes\Email;
 use Service\Notification\NotificationContext;
+use Service\Notification\Exception\NotificationException;
 use SplSubject;
 
 class CheckoutObserver implements \SplObserver
@@ -16,6 +17,11 @@ class CheckoutObserver implements \SplObserver
 
         $user = $subject->getUser();
 
-        $notification->notify($user, 'checkout_template');
+        try {
+            $notification->notify($user, 'checkout_template');
+        }
+        catch (NotificationException $e) {
+            //error of notification
+        }
     }
 }

@@ -5,10 +5,10 @@ namespace Service\Discount;
 use Service\Discount\DiscountTypes\IDiscount;
 
 /**
- * Class DiscountIdentifier
+ * Class DiscountContext
  * @package Service\Discount
  */
-class DiscountIdentifier
+class DiscountContext
 {
     /**
      * @var IDiscount $discount
@@ -18,13 +18,14 @@ class DiscountIdentifier
     /**
      * @param IDiscount $discount
      */
-    public function setDiscount(IDiscount $discount)
+    public function __construct(IDiscount $discount)
     {
         $this->discount = $discount;
     }
 
     /**
      * @return float
+     * @throws Exception\DiscountException
      */
     public function getDiscount() : float
     {

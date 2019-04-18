@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Service\Order;
 
 use Model;
+
 use SplObserver;
 use SplObjectStorage;
 use Model\Entity\User;
@@ -12,10 +13,11 @@ use Service\Billing\BillingContext;
 use Service\Billing\BillingTypes\Card;
 use Service\Billing\BillingTypes\BankTransfer;
 use Service\Billing\Exception\BillingException;
-use Service\Discount\DiscountIdentifier;
+use Service\Discount\DiscountContext;
 use Service\Discount\DiscountTypes\NullObject;
 use Service\Discount\DiscountTypes\PromoCode;
 use Service\Discount\DiscountTypes\VipDiscount;
+use Service\Discount\Exception\DiscountException;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class Basket implements \SplSubject
@@ -116,7 +118,7 @@ class Basket implements \SplSubject
     }
 
     /**
-     * Оформление заказа
+     * Checkout
      *
      * @return void
      */
@@ -126,12 +128,10 @@ class Basket implements \SplSubject
         $billing = new BillingContext(new Card());
         //$billing = new BillingContext(new BankTransfer());
 
-        // Здесь должна быть некоторая логика получения информации о скидки пользователя
-        $discount = new DiscountIdentifier();
-        //Выбираем тип скидки
-        $discount->setDiscount(new VipDiscount($this->user));
-        //$discount->setDiscount(new NullObject());
-        //$discount->setDiscount(new PromoCode('month_discount'));
+        //Choose a way to get discount
+        $discount = new DiscountContext(new VipDiscount($this->user));
+        //$discount = new DiscountContext(new PromoCode('month_discount'));
+        //$discount = new DiscountContext(new NullObject());
 
         $this->checkoutProcess($discount, $billing);
     }
@@ -139,12 +139,12 @@ class Basket implements \SplSubject
     /**
      * Проведение всех этапов заказа
      *
-     * @param DiscountIdentifier $discount
+     * @param DiscountContext $discount
      * @param BillingContext $billing
      * @return void
      */
     public function checkoutProcess(
-        DiscountIdentifier $discount,
+        DiscountContext $discount,
         BillingContext $billing
     ): void {
         $totalPrice = 0;
@@ -156,8 +156,8 @@ class Basket implements \SplSubject
         try {
             $discount = $discount->getDiscount();
         }
-        catch (\Exception $e) {
-            // discount not defined
+        catch (DiscountException $e) {
+            // error of get discount
         }
 
         //Count total price
