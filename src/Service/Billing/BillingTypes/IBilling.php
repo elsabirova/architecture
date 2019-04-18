@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Service\Billing;
+namespace Service\Billing\BillingTypes;
 
 use Service\Billing\Exception\BillingException;
 

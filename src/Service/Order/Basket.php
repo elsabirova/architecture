@@ -8,8 +8,10 @@ use Model;
 use SplObserver;
 use SplObjectStorage;
 use Model\Entity\User;
-use Service\Billing\Card;
-use Service\Billing\IBilling;
+use Service\Billing\BillingContext;
+use Service\Billing\BillingTypes\Card;
+use Service\Billing\BillingTypes\BankTransfer;
+use Service\Billing\Exception\BillingException;
 use Service\Discount\DiscountIdentifier;
 use Service\Discount\DiscountTypes\NullObject;
 use Service\Discount\DiscountTypes\PromoCode;
@@ -117,12 +119,12 @@ class Basket implements \SplSubject
      * Оформление заказа
      *
      * @return void
-     * @throws \Service\Billing\Exception\BillingException
      */
     public function checkout(): void
     {
-        // Здесь должна быть некоторая логика выбора способа платежа
-        $billing = new Card();
+        //Choose a way to payment
+        $billing = new BillingContext(new Card());
+        //$billing = new BillingContext(new BankTransfer());
 
         // Здесь должна быть некоторая логика получения информации о скидки пользователя
         $discount = new DiscountIdentifier();
@@ -138,13 +140,12 @@ class Basket implements \SplSubject
      * Проведение всех этапов заказа
      *
      * @param DiscountIdentifier $discount
-     * @param IBilling $billing
+     * @param BillingContext $billing
      * @return void
-     * @throws \Service\Billing\Exception\BillingException
      */
     public function checkoutProcess(
         DiscountIdentifier $discount,
-        IBilling $billing
+        BillingContext $billing
     ): void {
         $totalPrice = 0;
         foreach ($this->getProductsInfo() as $product) {
@@ -158,9 +159,17 @@ class Basket implements \SplSubject
         catch (\Exception $e) {
             // discount not defined
         }
+
+        //Count total price
         $totalPrice = $totalPrice - $totalPrice / 100 * $discount;
 
-        $billing->pay($totalPrice);
+        //Payment
+        try {
+            $billing->pay($totalPrice);
+        }
+        catch (BillingException $e) {
+            //error of payment
+        }
 
         //Notification of observers
         $this->notify();
