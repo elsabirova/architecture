@@ -2,11 +2,11 @@
 
 declare(strict_types = 1);
 
-namespace Service\Communication;
+namespace Service\Notification\NotificationTypes;
 
 use Model;
 
-class Sms implements ICommunication
+class Sms implements INotification
 {
     /**
      * @inheritdoc

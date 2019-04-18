@@ -5,19 +5,18 @@ declare(strict_types = 1);
 namespace Service\Order;
 
 use Model;
+use SplObserver;
+use SplObjectStorage;
+use Model\Entity\User;
 use Service\Billing\Card;
 use Service\Billing\IBilling;
-use Service\Communication\Email;
-use Service\Communication\ICommunication;
 use Service\Discount\DiscountIdentifier;
 use Service\Discount\DiscountTypes\NullObject;
 use Service\Discount\DiscountTypes\PromoCode;
 use Service\Discount\DiscountTypes\VipDiscount;
-use Service\User\ISecurity;
-use Service\User\Security;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-class Basket
+class Basket implements \SplSubject
 {
     /**
      * Сессионный ключ списка всех продуктов корзины
@@ -30,11 +29,49 @@ class Basket
     private $session;
 
     /**
-     * @param SessionInterface $session
+     * @var User
      */
-    public function __construct(SessionInterface $session)
+    protected $user;
+
+    /**
+     * @var SplObjectStorage
+     */
+    private $observers;
+
+    /**
+     * Basket constructor.
+     * @param SessionInterface $session
+     * @param User $user
+     */
+    public function __construct(SessionInterface $session, User $user)
     {
         $this->session = $session;
+        $this->user = $user;
+        $this->observers = new SplObjectStorage();
+    }
+
+    public function getUser() {
+        return $this->user;
+    }
+
+    /**
+     * @param SplObserver $observer
+     */
+    public function attach(SplObserver $observer) {
+        $this->observers->attach($observer);
+    }
+
+    /**
+     * @param SplObserver $observer
+     */
+    public function detach(SplObserver $observer) {
+        $this->observers->detach($observer);
+    }
+
+    public function notify() {
+        foreach ($this->observers as $observer) {
+            $observer->update($this);
+        }
     }
 
     /**
@@ -80,49 +117,41 @@ class Basket
      * Оформление заказа
      *
      * @return void
+     * @throws \Service\Billing\Exception\BillingException
      */
     public function checkout(): void
     {
         // Здесь должна быть некоторая логика выбора способа платежа
         $billing = new Card();
 
-        // Здесь должна быть некоторая логика получения способа уведомления пользователя о покупке
-        $communication = new Email();
-
-        $security = new Security($this->session);
-
         // Здесь должна быть некоторая логика получения информации о скидки пользователя
         $discount = new DiscountIdentifier();
         //Выбираем тип скидки
-        $user = $security->getUser();
-        $discount->setDiscount(new VipDiscount($user));
+        $discount->setDiscount(new VipDiscount($this->user));
         //$discount->setDiscount(new NullObject());
         //$discount->setDiscount(new PromoCode('month_discount'));
 
-        $this->checkoutProcess($discount, $billing, $security, $communication);
+        $this->checkoutProcess($discount, $billing);
     }
 
     /**
      * Проведение всех этапов заказа
      *
-     * @param DiscountIdentifier $discount,
-     * @param IBilling $billing,
-     * @param ISecurity $security,
-     * @param ICommunication $communication
+     * @param DiscountIdentifier $discount
+     * @param IBilling $billing
      * @return void
+     * @throws \Service\Billing\Exception\BillingException
      */
     public function checkoutProcess(
         DiscountIdentifier $discount,
-        IBilling $billing,
-        ISecurity $security,
-        ICommunication $communication
+        IBilling $billing
     ): void {
         $totalPrice = 0;
         foreach ($this->getProductsInfo() as $product) {
             $totalPrice += $product->getPrice();
         }
 
-        //Получаем скидку
+        //Get a discount
         try {
             $discount = $discount->getDiscount();
         }
@@ -133,8 +162,8 @@ class Basket
 
         $billing->pay($totalPrice);
 
-        $user = $security->getUser();
-        $communication->process($user, 'checkout_template');
+        //Notification of observers
+        $this->notify();
     }
 
     /**
