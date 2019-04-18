@@ -5,6 +5,9 @@ declare(strict_types = 1);
 namespace Service\Product;
 
 use Model;
+use Service\Product\Sort\SortContext;
+use Service\Product\Sort\SortTypes\SortByName;
+use Service\Product\Sort\SortTypes\SortByPrice;
 
 class Product
 {
@@ -29,11 +32,20 @@ class Product
      */
     public function getAll(string $sortType): array
     {
-        $productList = $this->getProductRepository()->fetchAll();
-
+        $productRepository = $this->getProductRepository();
         // Применить паттерн Стратегия
         // $sortType === 'price'; // Сортировка по цене
         // $sortType === 'name'; // Сортировка по имени
+
+        //Sort by price
+        if($sortType === 'price') {
+            $sort = new SortContext(new SortByPrice());
+        } //Sort by name
+        else {
+            $sort = new SortContext(new SortByName());
+        }
+
+        $productList = $sort->run($productRepository);
 
         return $productList;
     }

@@ -5,17 +5,22 @@ declare(strict_types = 1);
 namespace Service\Order;
 
 use Model;
-use Service\Billing\Card;
-use Service\Billing\IBilling;
-use Service\Communication\Email;
-use Service\Communication\ICommunication;
-use Service\Discount\IDiscount;
-use Service\Discount\NullObject;
-use Service\User\ISecurity;
-use Service\User\Security;
+
+use SplObserver;
+use SplObjectStorage;
+use Model\Entity\User;
+use Service\Billing\BillingContext;
+use Service\Billing\BillingTypes\Card;
+use Service\Billing\BillingTypes\BankTransfer;
+use Service\Billing\Exception\BillingException;
+use Service\Discount\DiscountContext;
+use Service\Discount\DiscountTypes\NullObject;
+use Service\Discount\DiscountTypes\PromoCode;
+use Service\Discount\DiscountTypes\VipDiscount;
+use Service\Discount\Exception\DiscountException;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-class Basket
+class Basket implements \SplSubject
 {
     /**
      * Сессионный ключ списка всех продуктов корзины
@@ -28,11 +33,49 @@ class Basket
     private $session;
 
     /**
-     * @param SessionInterface $session
+     * @var User
      */
-    public function __construct(SessionInterface $session)
+    protected $user;
+
+    /**
+     * @var SplObjectStorage
+     */
+    private $observers;
+
+    /**
+     * Basket constructor.
+     * @param SessionInterface $session
+     * @param User $user
+     */
+    public function __construct(SessionInterface $session, User $user)
     {
         $this->session = $session;
+        $this->user = $user;
+        $this->observers = new SplObjectStorage();
+    }
+
+    public function getUser() {
+        return $this->user;
+    }
+
+    /**
+     * @param SplObserver $observer
+     */
+    public function attach(SplObserver $observer) {
+        $this->observers->attach($observer);
+    }
+
+    /**
+     * @param SplObserver $observer
+     */
+    public function detach(SplObserver $observer) {
+        $this->observers->detach($observer);
+    }
+
+    public function notify() {
+        foreach ($this->observers as $observer) {
+            $observer->update($this);
+        }
     }
 
     /**
@@ -75,53 +118,61 @@ class Basket
     }
 
     /**
-     * Оформление заказа
+     * Checkout
      *
      * @return void
      */
     public function checkout(): void
     {
-        // Здесь должна быть некоторая логика выбора способа платежа
-        $billing = new Card();
+        //Choose a way to payment
+        $billing = new BillingContext(new Card());
+        //$billing = new BillingContext(new BankTransfer());
 
-        // Здесь должна быть некоторая логика получения информации о скидки пользователя
-        $discount = new NullObject();
+        //Choose a way to get discount
+        $discount = new DiscountContext(new VipDiscount($this->user));
+        //$discount = new DiscountContext(new PromoCode('month_discount'));
+        //$discount = new DiscountContext(new NullObject());
 
-        // Здесь должна быть некоторая логика получения способа уведомления пользователя о покупке
-        $communication = new Email();
-
-        $security = new Security($this->session);
-
-        $this->checkoutProcess($discount, $billing, $security, $communication);
+        $this->checkoutProcess($discount, $billing);
     }
 
     /**
      * Проведение всех этапов заказа
      *
-     * @param IDiscount $discount,
-     * @param IBilling $billing,
-     * @param ISecurity $security,
-     * @param ICommunication $communication
+     * @param DiscountContext $discount
+     * @param BillingContext $billing
      * @return void
      */
     public function checkoutProcess(
-        IDiscount $discount,
-        IBilling $billing,
-        ISecurity $security,
-        ICommunication $communication
+        DiscountContext $discount,
+        BillingContext $billing
     ): void {
         $totalPrice = 0;
         foreach ($this->getProductsInfo() as $product) {
             $totalPrice += $product->getPrice();
         }
 
-        $discount = $discount->getDiscount();
+        //Get a discount
+        try {
+            $discount = $discount->getDiscount();
+        }
+        catch (DiscountException $e) {
+            // error of get discount
+        }
+
+        //Count total price
         $totalPrice = $totalPrice - $totalPrice / 100 * $discount;
 
-        $billing->pay($totalPrice);
+        //Payment
+        try {
+            $billing->pay($totalPrice);
+        }
+        catch (BillingException $e) {
+            //error of payment
+        }
 
-        $user = $security->getUser();
-        $communication->process($user, 'checkout_template');
+        //Notification of observers
+        $this->notify();
     }
 
     /**

@@ -5,8 +5,9 @@ declare(strict_types = 1);
 namespace Controller;
 
 use Framework\Render;
-use Service\Order\Basket;
 use Service\User\Security;
+use Service\Order\Basket;
+use Service\Order\Observer\CheckoutObserver;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -26,8 +27,12 @@ class OrderController
             return $this->redirect('order_checkout');
         }
 
-        $productList = (new Basket($request->getSession()))->getProductsInfo();
-        $isLogged = (new Security($request->getSession()))->isLogged();
+        $security = new Security($request->getSession());
+        $user = $security->getUser();
+        $order = new Basket($request->getSession(), $user);
+        $productList = $order->getProductsInfo();
+
+        $isLogged = $security->isLogged();
 
         return $this->render('order/info.html.php', ['productList' => $productList, 'isLogged' => $isLogged]);
     }
@@ -40,12 +45,17 @@ class OrderController
      */
     public function checkoutAction(Request $request): Response
     {
-        $isLogged = (new Security($request->getSession()))->isLogged();
+        $security = new Security($request->getSession());
+        $isLogged = $security->isLogged();
         if (!$isLogged) {
             return $this->redirect('user_authentication');
         }
 
-        (new Basket($request->getSession()))->checkout();
+        $user = $security->getUser();
+        $observer = new CheckoutObserver();
+        $order = new Basket($request->getSession(), $user);
+        $order->attach($observer);
+        $order->checkout();
 
         return $this->render('order/checkout.html.php');
     }

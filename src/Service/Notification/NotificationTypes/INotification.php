@@ -2,12 +2,12 @@
 
 declare(strict_types = 1);
 
-namespace Service\Communication;
+namespace Service\Notification\NotificationTypes;
 
 use Model;
-use Service\Communication\Exception\CommunicationException;
+use Service\Notification\Exception\NotificationException;
 
-interface ICommunication
+interface INotification
 {
     /**
      * Точка входа по формированию и отправке сообщения пользователю
@@ -18,7 +18,7 @@ interface ICommunication
      *
      * @return void
      *
-     * @throws CommunicationException
+     * @throws NotificationException
      */
     public function process(Model\Entity\User $user, string $templateName, array $params = []): void;
 }
