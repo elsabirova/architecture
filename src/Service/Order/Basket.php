@@ -9,15 +9,14 @@ use Model;
 use SplObserver;
 use SplObjectStorage;
 use Model\Entity\User;
+use Service\Log\ILogger;
 use Service\Billing\BillingContext;
 use Service\Billing\BillingTypes\Card;
 use Service\Billing\BillingTypes\BankTransfer;
-use Service\Billing\Exception\BillingException;
 use Service\Discount\DiscountContext;
 use Service\Discount\DiscountTypes\NullObject;
 use Service\Discount\DiscountTypes\PromoCode;
 use Service\Discount\DiscountTypes\VipDiscount;
-use Service\Discount\Exception\DiscountException;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class Basket implements \SplSubject
@@ -41,21 +40,42 @@ class Basket implements \SplSubject
      * @var SplObjectStorage
      */
     private $observers;
+    /**
+     * @var ILogger
+     */
+    private $logger;
+
+    /**
+     * @var BasketBuilder
+     */
+    private $basketBuilder;
 
     /**
      * Basket constructor.
-     * @param SessionInterface $session
-     * @param User $user
+     * @param BasketBuilder $basketBuilder
      */
-    public function __construct(SessionInterface $session, User $user)
+    public function __construct(BasketBuilder $basketBuilder)
     {
-        $this->session = $session;
-        $this->user = $user;
+        $this->basketBuilder = $basketBuilder;
+        $this->session = $basketBuilder->getSession();
+        $this->user = $basketBuilder->getUser();
+        $this->logger = $basketBuilder->getLogger();
+
         $this->observers = new SplObjectStorage();
     }
 
-    public function getUser() {
+    /**
+     * @return User
+     */
+    public function getUser(): User {
         return $this->user;
+    }
+
+    /**
+     * @return ILogger
+     */
+    public function getLogger(): ILogger {
+        return $this->logger;
     }
 
     /**
@@ -124,52 +144,17 @@ class Basket implements \SplSubject
      */
     public function checkout(): void
     {
-        //Choose a way to payment
-        $billing = new BillingContext(new Card());
-        //$billing = new BillingContext(new BankTransfer());
+        //Choose a way to payment Card or BankTransfer
+        $this->basketBuilder->setBilling(new BillingContext(new Card()));
 
         //Choose a way to get discount
-        $discount = new DiscountContext(new VipDiscount($this->user));
-        //$discount = new DiscountContext(new PromoCode('month_discount'));
-        //$discount = new DiscountContext(new NullObject());
+        //new VipDiscount($this->user)
+        //new PromoCode('month_discount')
+        //new NullObject()
+        $this->basketBuilder->setDiscount(new DiscountContext(new VipDiscount($this->user)));
 
-        $this->checkoutProcess($discount, $billing);
-    }
-
-    /**
-     * Проведение всех этапов заказа
-     *
-     * @param DiscountContext $discount
-     * @param BillingContext $billing
-     * @return void
-     */
-    public function checkoutProcess(
-        DiscountContext $discount,
-        BillingContext $billing
-    ): void {
-        $totalPrice = 0;
-        foreach ($this->getProductsInfo() as $product) {
-            $totalPrice += $product->getPrice();
-        }
-
-        //Get a discount
-        try {
-            $discount = $discount->getDiscount();
-        }
-        catch (DiscountException $e) {
-            // error of get discount
-        }
-
-        //Count total price
-        $totalPrice = $totalPrice - $totalPrice / 100 * $discount;
-
-        //Payment
-        try {
-            $billing->pay($totalPrice);
-        }
-        catch (BillingException $e) {
-            //error of payment
-        }
+        $checkout = new Checkout();
+        $checkout->process($this->basketBuilder, $this->getProductsInfo());
 
         //Notification of observers
         $this->notify();

@@ -22,6 +22,7 @@ class CheckoutObserver implements \SplObserver
         }
         catch (NotificationException $e) {
             //error of notification
+            $subject->getLogger()->log($e->getMessage());
         }
     }
 }
