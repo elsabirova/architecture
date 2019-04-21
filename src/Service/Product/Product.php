@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Service\Product;
 
 use Model;
+use Model\Entity;
 use Service\Product\Sort\SortContext;
 use Service\Product\Sort\SortTypes\SortByName;
 use Service\Product\Sort\SortTypes\SortByPrice;
@@ -57,6 +58,6 @@ class Product
      */
     protected function getProductRepository(): Model\Repository\Product
     {
-        return new Model\Repository\Product();
+        return new Model\Repository\Product(new Entity\Product());
     }
 }
