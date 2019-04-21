@@ -5,10 +5,10 @@ declare(strict_types = 1);
 namespace Service\Order;
 
 use Model;
-
+use Model\Entity;
+use Model\Entity\User;
 use SplObserver;
 use SplObjectStorage;
-use Model\Entity\User;
 use Service\Log\ILogger;
 use Service\Billing\BillingContext;
 use Service\Billing\BillingTypes\Card;
@@ -167,7 +167,7 @@ class Basket implements \SplSubject
      */
     protected function getProductRepository(): Model\Repository\Product
     {
-        return new Model\Repository\Product();
+        return new Model\Repository\Product(new Entity\Product());
     }
 
     /**
