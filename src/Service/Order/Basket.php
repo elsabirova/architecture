@@ -46,17 +46,11 @@ class Basket implements \SplSubject
     private $logger;
 
     /**
-     * @var BasketBuilder
-     */
-    private $basketBuilder;
-
-    /**
      * Basket constructor.
      * @param BasketBuilder $basketBuilder
      */
     public function __construct(BasketBuilder $basketBuilder)
     {
-        $this->basketBuilder = $basketBuilder;
         $this->session = $basketBuilder->getSession();
         $this->user = $basketBuilder->getUser();
         $this->logger = $basketBuilder->getLogger();
@@ -140,21 +134,23 @@ class Basket implements \SplSubject
     /**
      * Checkout
      *
+     * @param CheckoutBuilder $checkoutBuilder
      * @return void
      */
-    public function checkout(): void
+    public function checkout(CheckoutBuilder $checkoutBuilder): void
     {
         //Choose a way to payment Card or BankTransfer
-        $this->basketBuilder->setBilling(new BillingContext(new Card()));
-
+        $checkoutBuilder->setBilling(new BillingContext(new Card()));
         //Choose a way to get discount
         //new VipDiscount($this->user)
         //new PromoCode('month_discount')
         //new NullObject()
-        $this->basketBuilder->setDiscount(new DiscountContext(new VipDiscount($this->user)));
+        $checkoutBuilder->setDiscount(new DiscountContext(new VipDiscount($this->user)));
+        $checkoutBuilder->setLogger($this->logger);
 
-        $checkout = new Checkout();
-        $checkout->process($this->basketBuilder, $this->getProductsInfo());
+        //Build Checkout
+        $checkout = $checkoutBuilder->build();
+        $checkout->process($this->getProductsInfo());
 
         //Notification of observers
         $this->notify();

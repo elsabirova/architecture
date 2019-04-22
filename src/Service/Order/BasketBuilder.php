@@ -1,11 +1,11 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Service\Order;
 
 use Model\Entity\User;
 use Service\Log\ILogger;
-use Service\Billing\BillingContext;
-use Service\Discount\DiscountContext;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class BasketBuilder
@@ -18,14 +18,7 @@ class BasketBuilder
      * @var User
      */
     private $user;
-    /**
-     * @var BillingContext
-     */
-    private $billing;
-    /**
-     * @var DiscountContext
-     */
-    private $discount;
+
     /**
      * @var ILogger
      */
@@ -60,27 +53,6 @@ class BasketBuilder
     }
 
     /**
-     * @return BillingContext
-     */
-    public function getBilling() {
-        return $this->billing;
-    }
-
-    /**
-     * @param BillingContext $billing
-     */
-    public function setBilling(BillingContext $billing): void {
-        $this->billing = $billing;
-    }
-
-    /**
-     * @return DiscountContext
-     */
-    public function getDiscount() {
-        return $this->discount;
-    }
-
-    /**
      * @return ILogger
      */
     public function getLogger(): ILogger {
@@ -92,13 +64,6 @@ class BasketBuilder
      */
     public function setLogger(ILogger $logger): void {
         $this->logger = $logger;
-    }
-
-    /**
-     * @param DiscountContext $discount
-     */
-    public function setDiscount(DiscountContext $discount): void {
-        $this->discount = $discount;
     }
 
     public function build() {
