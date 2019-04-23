@@ -5,8 +5,9 @@ declare(strict_types = 1);
 namespace Controller;
 
 use Framework\Render;
+use Service\Order\CheckoutBuilder;
+use Service\Order\BasketDirector;
 use Service\User\Security;
-use Service\Order\Basket;
 use Service\Order\Observer\CheckoutObserver;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,7 +17,7 @@ class OrderController
     use Render;
 
     /**
-     * Корзина
+     * Basket
      *
      * @param Request $request
      * @return Response
@@ -28,9 +29,10 @@ class OrderController
         }
 
         $security = new Security($request->getSession());
-        $user = $security->getUser();
-        $order = new Basket($request->getSession(), $user);
-        $productList = $order->getProductsInfo();
+
+        $basket = (new BasketDirector)->build($request, $security);
+
+        $productList = $basket->getProductsInfo();
 
         $isLogged = $security->isLogged();
 
@@ -38,7 +40,7 @@ class OrderController
     }
 
     /**
-     * Оформление заказа
+     * Checkout
      *
      * @param Request $request
      * @return Response
@@ -51,11 +53,11 @@ class OrderController
             return $this->redirect('user_authentication');
         }
 
-        $user = $security->getUser();
         $observer = new CheckoutObserver();
-        $order = new Basket($request->getSession(), $user);
-        $order->attach($observer);
-        $order->checkout();
+
+        $basket = (new BasketDirector)->build($request, $security);
+        $basket->attach($observer);
+        $basket->checkout(new CheckoutBuilder());
 
         return $this->render('order/checkout.html.php');
     }
