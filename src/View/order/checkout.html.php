@@ -1,17 +1,12 @@
 <?php
 
-/** @var \Model\Entity\Product[] $productList */
-/** @var bool $isLogged */
-/** @var \Closure $path */
-$body = function () use ($productList, $isLogged, $path) {
+/** @var \Service\BuilderForm\Form $orderForm */
+/** @var string $response */
+
+$body = function () use ($orderForm, $response) {
     ?>
-    <form method="post">
-        <table cellpadding="10">
-            <tr>
-                <td colspan="3" align="center">Покупка успешно совершена</td>
-            </tr>
-        </table>
-    </form>
+    <?= $orderForm ?>
+    <div><?= $response ?></div>
     <?php
 };
 

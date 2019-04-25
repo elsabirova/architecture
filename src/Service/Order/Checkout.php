@@ -40,9 +40,9 @@ class Checkout
      * Checkout process
      *
      * @param \Model\Entity\Product[] $products
-     * @return void
+     * @return bool
      */
-    public function process(array $products): void {
+    public function process(array $products): bool {
         $totalPrice = 0;
 
         foreach ($products as $product) {
@@ -67,5 +67,6 @@ class Checkout
             //error of payment
             $this->logger->log($e->getMessage());
         }
+        return true;
     }
 }
