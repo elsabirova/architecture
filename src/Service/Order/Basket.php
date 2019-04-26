@@ -1,22 +1,20 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Service\Order;
 
 use Model;
 use Model\Entity;
 use Model\Entity\User;
+use Service\BuilderForm\Fieldset;
+use Service\BuilderForm\Form;
+use Service\BuilderForm\Input;
+use Service\BuilderForm\Select;
+use Service\BuilderForm\Textarea;
 use SplObserver;
 use SplObjectStorage;
 use Service\Log\ILogger;
-use Service\Billing\BillingContext;
-use Service\Billing\BillingTypes\Card;
-use Service\Billing\BillingTypes\BankTransfer;
-use Service\Discount\DiscountContext;
-use Service\Discount\DiscountTypes\NullObject;
-use Service\Discount\DiscountTypes\PromoCode;
-use Service\Discount\DiscountTypes\VipDiscount;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class Basket implements \SplSubject
@@ -49,8 +47,7 @@ class Basket implements \SplSubject
      * Basket constructor.
      * @param BasketBuilder $basketBuilder
      */
-    public function __construct(BasketBuilder $basketBuilder)
-    {
+    public function __construct(BasketBuilder $basketBuilder) {
         $this->session = $basketBuilder->getSession();
         $this->user = $basketBuilder->getUser();
         $this->logger = $basketBuilder->getLogger();
@@ -99,8 +96,7 @@ class Basket implements \SplSubject
      *
      * @return void
      */
-    public function addProduct(int $product): void
-    {
+    public function addProduct(int $product): void {
         $basket = $this->session->get(static::BASKET_DATA_KEY, []);
         if (!in_array($product, $basket, true)) {
             $basket[] = $product;
@@ -115,8 +111,7 @@ class Basket implements \SplSubject
      *
      * @return bool
      */
-    public function isProductInBasket(int $productId): bool
-    {
+    public function isProductInBasket(int $productId): bool {
         return in_array($productId, $this->getProductIds(), true);
     }
 
@@ -125,8 +120,7 @@ class Basket implements \SplSubject
      *
      * @return Model\Entity\Product[]
      */
-    public function getProductsInfo(): array
-    {
+    public function getProductsInfo(): array {
         $productIds = $this->getProductIds();
         return $this->getProductRepository()->search($productIds);
     }
@@ -135,25 +129,56 @@ class Basket implements \SplSubject
      * Checkout
      *
      * @param CheckoutBuilder $checkoutBuilder
-     * @return void
+     * @return bool
      */
-    public function checkout(CheckoutBuilder $checkoutBuilder): void
-    {
-        //Choose a way to payment Card or BankTransfer
-        $checkoutBuilder->setBilling(new BillingContext(new Card()));
-        //Choose a way to get discount
-        //new VipDiscount($this->user)
-        //new PromoCode('month_discount')
-        //new NullObject()
-        $checkoutBuilder->setDiscount(new DiscountContext(new VipDiscount($this->user)));
+    public function checkout(CheckoutBuilder $checkoutBuilder): bool {
+
         $checkoutBuilder->setLogger($this->logger);
 
         //Build Checkout
         $checkout = $checkoutBuilder->build();
-        $checkout->process($this->getProductsInfo());
+        $result = $checkout->process($this->getProductsInfo());
 
         //Notification of observers
-        $this->notify();
+        if ($result) {
+            $this->notify();
+        }
+
+        return $result;
+    }
+
+    public function renderOrderForm() {
+        $orderForm = new Form(['key' => 'orderForm', 'title' => 'Checkout', 'class' => 'order-form', 'action' => '/order/checkout', 'method' => 'post']);
+        $fullName = new Input(['key' => 'fullName', 'name' => 'fullName', 'class' => 'order-client-full-name', 'type' => 'text', 'placeholder' => 'Enter full name']);
+        $email = new Input(['key' => 'email', 'name' => 'email', 'class' => 'order-client-email', 'type' => 'email', 'placeholder' => 'Enter email']);
+        $billingFieldset = new Fieldset(['key' => 'billingFieldset', 'title' => 'Choose payment method']);
+        $radioButtonCard = new Input(['key' => 'billingCard', 'name' => 'billing', 'type' => 'radio', 'value' => 'card', 'title' => 'Card', 'checked' => true]);
+        $radioButtonBankTransfer = new Input(['key' => 'billingTransfer', 'name' => 'billing', 'type' => 'radio', 'value' => 'bankTransfer', 'title' => 'Bank transfer']);
+        $billingFieldset
+            ->add($radioButtonCard)
+            ->add($radioButtonBankTransfer);
+        $discountFieldset = new Fieldset(['key' => 'discountFieldset', 'title' => 'Choose discount']);
+        $radioButtonCode = new Input(['key' => 'discountCode', 'name' => 'discount', 'type' => 'radio', 'value' => 'code', 'title' => 'Promo code']);
+        $radioButtonVip = new Input(['key' => 'discountVip', 'name' => 'discount', 'type' => 'radio', 'value' => 'vip', 'title' => 'Vip ']);
+        $promoCode = new Input(['key' => 'promoCode', 'name' => 'promoCode', 'type' => 'text', 'placeholder' => 'Enter promo code']);
+        $discountFieldset
+            ->add($radioButtonVip)
+            ->add($radioButtonCode)
+            ->add($promoCode);
+
+        $notification = new Select(['key' => 'notification', 'name' => 'notification', 'class' => 'notification', 'title' => 'Notification ', 'values' => ['sms' => 'Sms', 'email' => 'Email']]);
+        $button = new Input(['key' => 'orderButton', 'name' => 'orderButton', 'class' => 'order-button', 'type' => 'submit', 'value' => 'Checkout']);
+        $comment = new Textarea(['key' => 'comment', 'name' => 'comment', 'title' => 'Comment', 'class' => 'order-comment', 'rows' => '4', 'cols' => '50']);
+        $orderForm
+            ->add($fullName)
+            ->add($email)
+            ->add($billingFieldset)
+            ->add($discountFieldset)
+            ->add($comment)
+            ->add($notification)
+            ->add($button);
+
+        return $orderForm->render();
     }
 
     /**
@@ -161,8 +186,7 @@ class Basket implements \SplSubject
      *
      * @return Model\Repository\Product
      */
-    protected function getProductRepository(): Model\Repository\Product
-    {
+    protected function getProductRepository(): Model\Repository\Product {
         return new Model\Repository\Product(new Entity\Product());
     }
 
@@ -171,8 +195,7 @@ class Basket implements \SplSubject
      *
      * @return array
      */
-    private function getProductIds(): array
-    {
+    private function getProductIds(): array {
         return $this->session->get(static::BASKET_DATA_KEY, []);
     }
 }
