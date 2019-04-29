@@ -12,12 +12,11 @@ use Service\BuilderForm\Form;
 use Service\BuilderForm\Input;
 use Service\BuilderForm\Select;
 use Service\BuilderForm\Textarea;
-use SplObserver;
-use SplObjectStorage;
 use Service\Log\ILogger;
+use Service\Order\Observer\CheckoutObserver;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-class Basket implements \SplSubject
+class Basket
 {
     /**
      * Сессионный ключ списка всех продуктов корзины
@@ -35,10 +34,6 @@ class Basket implements \SplSubject
     protected $user;
 
     /**
-     * @var SplObjectStorage
-     */
-    private $observers;
-    /**
      * @var ILogger
      */
     private $logger;
@@ -51,42 +46,6 @@ class Basket implements \SplSubject
         $this->session = $basketBuilder->getSession();
         $this->user = $basketBuilder->getUser();
         $this->logger = $basketBuilder->getLogger();
-
-        $this->observers = new SplObjectStorage();
-    }
-
-    /**
-     * @return User
-     */
-    public function getUser(): User {
-        return $this->user;
-    }
-
-    /**
-     * @return ILogger
-     */
-    public function getLogger(): ILogger {
-        return $this->logger;
-    }
-
-    /**
-     * @param SplObserver $observer
-     */
-    public function attach(SplObserver $observer) {
-        $this->observers->attach($observer);
-    }
-
-    /**
-     * @param SplObserver $observer
-     */
-    public function detach(SplObserver $observer) {
-        $this->observers->detach($observer);
-    }
-
-    public function notify() {
-        foreach ($this->observers as $observer) {
-            $observer->update($this);
-        }
     }
 
     /**
@@ -134,19 +93,20 @@ class Basket implements \SplSubject
     public function checkout(CheckoutBuilder $checkoutBuilder): string {
 
         $checkoutBuilder->setLogger($this->logger);
+        $checkoutBuilder->setUser($this->user);
         $checkoutBuilder->setProducts($this->getProductsInfo());
 
         //Build Checkout
         $checkout = $checkoutBuilder->build();
+        $checkout->attach(new CheckoutObserver());
         $result = $checkout->process();
 
-        //Notification of observers
-        if ($result) {
-            $this->notify();
-            return 'Purchase completed successfully';
+        if (!$result) {
+            return 'Purchase error. Try again.';
         }
 
-         return 'Purchase error. Try again.';
+        return 'Purchase completed successfully';
+
     }
 
     public function renderOrderForm() {

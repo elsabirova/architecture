@@ -15,7 +15,6 @@ use Service\Discount\DiscountTypes\VipDiscount;
 use Service\Order\CheckoutBuilder;
 use Service\Order\BasketDirector;
 use Service\User\Security;
-use Service\Order\Observer\CheckoutObserver;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -59,9 +58,6 @@ class OrderController
         }
 
         $basket = (new BasketDirector)->build($request, $security);
-
-        $observer = new CheckoutObserver();
-        $basket->attach($observer);
 
         if ($request->isMethod(Request::METHOD_POST)) {
             $checkoutBuilder = new CheckoutBuilder();

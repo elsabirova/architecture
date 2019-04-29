@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Service\Order;
 
+use Model\Entity\User;
 use Service\Log\ILogger;
 use Service\Billing\BillingContext;
 use Service\Discount\DiscountContext;
@@ -18,6 +19,10 @@ class CheckoutBuilder
      * @var DiscountContext
      */
     private $discount;
+    /**
+     * @var User
+     */
+    protected $user;
     /**
      * @var ILogger
      */
@@ -53,6 +58,20 @@ class CheckoutBuilder
      */
     public function setDiscount(DiscountContext $discount): void {
         $this->discount = $discount;
+    }
+
+    /**
+     * @return User
+     */
+    public function getUser(): User {
+        return $this->user;
+    }
+
+    /**
+     * @param User $user
+     */
+    public function setUser(User $user): void {
+        $this->user = $user;
     }
 
     /**

@@ -4,13 +4,14 @@ declare(strict_types = 1);
 
 namespace Service\Order;
 
+use Model\Entity\User;
 use Service\Billing\BillingContext;
 use Service\Billing\Exception\BillingException;
 use Service\Discount\DiscountContext;
 use Service\Discount\Exception\DiscountException;
 use Service\Log\ILogger;
 
-class Checkout
+class Checkout implements \SplSubject
 {
     /**
      * @var BillingContext
@@ -20,6 +21,10 @@ class Checkout
      * @var DiscountContext
      */
     private $discount;
+    /**
+     * @var User
+     */
+    protected $user;
     /**
      * @var ILogger
      */
@@ -31,14 +36,34 @@ class Checkout
     private $products;
 
     /**
+     * @var \SplObjectStorage
+     */
+    private $observers;
+
+    /**
      * Checkout constructor.
      * @param CheckoutBuilder $checkoutBuilder
      */
     public function __construct(CheckoutBuilder $checkoutBuilder) {
         $this->billing  = $checkoutBuilder->getBilling();
         $this->discount = $checkoutBuilder->getDiscount();
+        $this->user   = $checkoutBuilder->getUser();
         $this->logger   = $checkoutBuilder->getLogger();
         $this->products = $checkoutBuilder->getProducts();
+        $this->observers = new \SplObjectStorage();
+    }
+    /**
+     * @return User
+     */
+    public function getUser(): User {
+        return $this->user;
+    }
+
+    /**
+     * @return ILogger
+     */
+    public function getLogger(): ILogger {
+        return $this->logger;
     }
 
     /**
@@ -51,6 +76,8 @@ class Checkout
         $discount   = $this->getDiscount();
         $totalPrice = $this->applyDiscount($totalPrice, $discount);
         $this->pay($totalPrice);
+        //Notification of user (observers)
+        $this->notify();
         return true;
     }
 
@@ -104,6 +131,26 @@ class Checkout
         } catch (BillingException $e) {
             //error of payment
             $this->logger->log($e->getMessage());
+        }
+    }
+
+    /**
+     * @param \SplObserver $observer
+     */
+    public function attach(\SplObserver $observer) {
+        $this->observers->attach($observer);
+    }
+
+    /**
+     * @param \SplObserver $observer
+     */
+    public function detach(\SplObserver $observer) {
+        $this->observers->detach($observer);
+    }
+
+    public function notify() {
+        foreach ($this->observers as $observer) {
+            $observer->update($this);
         }
     }
 }
