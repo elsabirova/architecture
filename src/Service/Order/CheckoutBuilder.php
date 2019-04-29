@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Service\Order;
 
+use Model\Entity\User;
 use Service\Log\ILogger;
 use Service\Billing\BillingContext;
 use Service\Discount\DiscountContext;
@@ -19,9 +20,17 @@ class CheckoutBuilder
      */
     private $discount;
     /**
+     * @var User
+     */
+    protected $user;
+    /**
      * @var ILogger
      */
     private $logger;
+    /**
+     * @var \Model\Entity\Product[]
+     */
+    private $products;
 
     /**
      * @return BillingContext
@@ -52,6 +61,20 @@ class CheckoutBuilder
     }
 
     /**
+     * @return User
+     */
+    public function getUser(): User {
+        return $this->user;
+    }
+
+    /**
+     * @param User $user
+     */
+    public function setUser(User $user): void {
+        $this->user = $user;
+    }
+
+    /**
      * @return ILogger
      */
     public function getLogger(): ILogger {
@@ -63,6 +86,20 @@ class CheckoutBuilder
      */
     public function setLogger(ILogger $logger): void {
         $this->logger = $logger;
+    }
+
+    /**
+     * @return \Model\Entity\Product[]
+     */
+    public function getProducts(): array {
+        return $this->products;
+    }
+
+    /**
+     * @param \Model\Entity\Product[] $products
+     */
+    public function setProducts(array $products): void {
+        $this->products = $products;
     }
 
     public function build() {
