@@ -22,6 +22,10 @@ class CheckoutBuilder
      * @var ILogger
      */
     private $logger;
+    /**
+     * @var \Model\Entity\Product[]
+     */
+    private $products;
 
     /**
      * @return BillingContext
@@ -63,6 +67,20 @@ class CheckoutBuilder
      */
     public function setLogger(ILogger $logger): void {
         $this->logger = $logger;
+    }
+
+    /**
+     * @return \Model\Entity\Product[]
+     */
+    public function getProducts(): array {
+        return $this->products;
+    }
+
+    /**
+     * @param \Model\Entity\Product[] $products
+     */
+    public function setProducts(array $products): void {
+        $this->products = $products;
     }
 
     public function build() {

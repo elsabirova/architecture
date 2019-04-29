@@ -129,22 +129,24 @@ class Basket implements \SplSubject
      * Checkout
      *
      * @param CheckoutBuilder $checkoutBuilder
-     * @return bool
+     * @return string
      */
-    public function checkout(CheckoutBuilder $checkoutBuilder): bool {
+    public function checkout(CheckoutBuilder $checkoutBuilder): string {
 
         $checkoutBuilder->setLogger($this->logger);
+        $checkoutBuilder->setProducts($this->getProductsInfo());
 
         //Build Checkout
         $checkout = $checkoutBuilder->build();
-        $result = $checkout->process($this->getProductsInfo());
+        $result = $checkout->process();
 
         //Notification of observers
         if ($result) {
             $this->notify();
+            return 'Purchase completed successfully';
         }
 
-        return $result;
+         return 'Purchase error. Try again.';
     }
 
     public function renderOrderForm() {

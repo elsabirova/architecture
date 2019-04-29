@@ -91,12 +91,7 @@ class OrderController
                 default:
                     $checkoutBuilder->setDiscount(new DiscountContext(new NullObject()));
             }
-            $checkout = $basket->checkout($checkoutBuilder);
-            if ($checkout) {
-                $response = 'Purchase completed successfully';
-            } else {
-                $response = 'Purchase error. Try again.';
-            }
+            $response = $basket->checkout($checkoutBuilder);
             $orderForm = '';
         } else {
             $orderForm = $basket->renderOrderForm();
